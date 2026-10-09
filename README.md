@@ -1,17 +1,101 @@
-# Submission 1: Hoax Detection
-Nama: Harry Mardika
+# Hoax Detection: Pipeline MLOps dengan TFX
 
-Username dicoding: hkacode
+Pipeline machine learning end-to-end untuk mendeteksi berita hoaks berbahasa Indonesia, dibangun dengan **TensorFlow Extended (TFX)**: validasi data, hyperparameter tuning, pelatihan CNN teks, evaluasi dengan TFMA, deployment dengan **TensorFlow Serving** di Railway, dan monitoring dengan **Prometheus + Grafana**.
+
+Proyek ini adalah submission kelas MLOps Dicoding (*Submission 1: Hoax Detection*). **Nama:** Harry Mardika · **Username Dicoding:** hkacode
+
+## Ringkasan Hasil
+
+| Metrik | Nilai |
+|---|---|
+| Accuracy / loss (train) | 0.8961 / 0.2798 |
+| Validation accuracy / loss | 0.8118 / 0.6459 |
+| Hyperparameter terbaik | vocab 14.000, panjang sekuens 125, embedding 128, Conv1D 128 filter, Dense 64 dan 80, dropout 0.2 dan 0.3, learning rate ≈ 7e-5 |
+| Tuning | Keras Tuner RandomSearch, 30 trial, objective `val_loss` (terbaik 0.4569) |
+
+Model yang disimpan berasal dari epoch pertama (val_loss terendah). Setelah itu akurasi training naik ke 99,9% tetapi val_loss terus naik, tanda overfitting cepat.
+
+**Catatan:** dataset tidak seimbang (sekitar 82% berlabel hoaks), sehingga akurasi validasi 81% hampir sama dengan model yang selalu menebak "hoaks". Precision, recall, dan AUC dari Evaluator lebih tepat untuk menilai model. Penanganan ketidakseimbangan kelas (class weight atau resampling) adalah langkah perbaikan berikutnya.
+
+## Deskripsi Proyek
 
 | | **Deskripsi** |
-| ----------- | ----------- |
-| **Dataset** | [Indonesia False News (Hoax) Dataset](https://www.kaggle.com/datasets/muhammadghazimuharam/indonesiafalsenews/data) |
-| **Masalah** | Hoax atau berita palsu merupakan masalah yang signifikan dalam konteks informasi digital saat ini. Berita palsu dapat menyebabkan ketidakpercayaan publik, mempengaruhi opini dan keputusan, serta bahkan dapat memicu konflik sosial. Dalam proyek ini, masalah yang diangkat adalah bagaimana mengidentifikasi dan mengklasifikasikan berita palsu dengan tepat menggunakan pendekatan machine learning. Tantangan utama meliputi keberagaman gaya penulisan, variasi topik, dan strategi manipulatif yang digunakan oleh pembuat berita palsu. |
-| **Solusi Machine Learning** | Solusi yang diusulkan adalah menggunakan pendekatan deep learning dengan arsitektur Convolutional Neural Network (CNN). CNN dipilih karena kemampuannya dalam mengekstrak fitur spasial dari data berbasis grid, seperti teks dalam kalimat. Model ini akan dilatih untuk mengenali pola-pola yang umumnya terkait dengan berita palsu, seperti penggunaan kata-kata emosional, judul sensasional, atau konten yang tidak kredibel secara faktual. Penggunaan deep learning diharapkan dapat meningkatkan akurasi dan generalisasi model dalam mendeteksi berita palsu. |
-| **Metode Pengolahan** | Metode pengolahan data yang digunakan dalam proyek ini bertujuan untuk membersihkan dan mempersiapkan teks berita sebelum dimasukkan ke dalam model machine learning. Langkah-langkah pengolahan data meliputi: <br> 1. **Lowercasing**: Semua teks diubah menjadi huruf kecil untuk konsistensi dalam pemrosesan teks. 2. <br> **Penghapusan Tanda Baca**: Tanda baca seperti tanda kutip tunggal dan ganda dihapus dari teks untuk menghilangkan potensi gangguan dalam analisis. <br> 3. **Penghapusan Karakter Khusus**: Karakter khusus yang tidak relevan atau tidak diinginkan dihapus dari teks menggunakan ekspresi regular. <br> 4. **Penghapusan Spasi Ekstra**: Spasi yang berlebihan dihapus untuk memastikan format teks yang bersih dan konsisten. <br> 5. **Pemangkasan Spasi**: Spasi di awal dan akhir teks dipangkas agar tidak mempengaruhi hasil pemrosesan. <br> <br>  Metode pengolahan ini bertujuan untuk mempersiapkan teks berita sehingga model machine learning dapat dengan efektif mengenali pola-pola yang relevan dalam deteksi berita palsu. Dengan membersihkan dan merapihkan teks secara konsisten, diharapkan kualitas data yang masuk ke model dapat ditingkatkan, menghasilkan hasil klasifikasi yang lebih akurat.|
-| **Arsitektur Model** | Arsitektur model yang digunakan terdiri dari beberapa lapisan, yaitu: <br> 1. **Input Layer**: Menerima input teks dalam bentuk string. <br> 2. **Text Vectorization Layer**: Mengubah teks menjadi token numerik dengan TextVectorization layer dari Keras. <br> 3. **Embedding Layer**: Mengubah token numerik menjadi vektor dimensi yang lebih tinggi untuk menangkap makna kontekstual dari token. <br> 4. **Convolutional Layer**: Menggunakan lapisan Conv1D untuk menangkap fitur spasial dari teks, membantu dalam mendeteksi pola-pola umum pada kalimat-kalimat yang mengandung hoax. <br> 5. **Global Max Pooling Layer**: Mengambil nilai maksimum dari fitur yang dideteksi untuk setiap filter, mengurangi dimensi data dan fokus pada fitur yang paling menonjol. <br> 6. **Dense Layer 1**: Menggunakan lapisan fully connected untuk menggabungkan fitur-fitur yang diekstraksi dari lapisan sebelumnya. <br> 7. **Dropout Layer 1**: Pada lapisan Dense pertama setelah ekstraksi fitur dari lapisan sebelumnya, Dropout membantu dalam menghindari ketergantungan yang berlebihan pada fitur-fitur tertentu dan meningkatkan generalisasi model terhadap data uji. <br> 8. **Dense Layer 2**: Lapisan Dense kedua mengambil fitur-fitur yang telah diolah dan diekstraksi sebelumnya dan memproyeksikannya ke ruang fitur yang lebih tinggi lagi. <br> 9. **Dropout Layer 2**: Dropout kedua diaplikasikan setelah lapisan Dense kedua, menggunakan konsep yang sama dengan Dropout pertama. Ini membantu memastikan bahwa model tidak terlalu bergantung pada pola atau fitur-fitur tertentu yang mungkin hanya muncul dalam data pelatihan tetapi tidak umum dalam data uji atau penggunaan di dunia nyata. <br> 10. **Output Layer**: Menggunakan lapisan Dense dengan aktivasi sigmoid untuk menghasilkan probabilitas antara 0 (berita asli) dan 1 (berita palsu atau hoax). |
-| **Metrik Evaluasi** | Metrik yang digunakan untuk mengevaluasi performa model adalah **binary crossentropy** dan **accuracy**. <br> 1. **Binary Crossentropy**: Mengukur kerugian (loss) antara label sebenarnya dan prediksi model. Rumusnya adalah: <br> $\[ \text{Binary Crossentropy} = -\frac{1}{N} \Sigma_{i=1}^N [y_i \log(p_i) + (1-y_i) \log(1-p_i)] \$] di mana $\( y_i \)$ adalah label sebenarnya, $\( p_i \)$ adalah probabilitas prediksi, dan $\( N \)$ adalah jumlah sampel. <br> 2. **Accuracy**: Mengukur persentase prediksi yang benar dari total prediksi yang dibuat. Rumusnya adalah: <br> $\[ \text{Accuracy} = \frac{\text{Number of Correct Predictions}}{\text{Total Number of Predictions}} \]$ Metrik ini memberikan gambaran umum tentang seberapa baik model dalam mengklasifikasikan input sebagai hoax dan fakta. |
-| **Performa Model** | Model yang dibuat mencapai performa yang baik pada data uji dengan hasil sebagai berikut: <br> - **Loss**: 0.2798 <br> - **Accuracy**: 0.8961 <br> - **Validation Loss**: 0.6459 <br> - **Validation Accuracy**: 0.8118 <br><br> Berdasarkan performa yang ditunjukkan oleh model ini, dapat disimpulkan bahwa model memiliki kemampuan yang baik dalam memprediksi dan mengklasifikasikan berita antara hoax dan non-hoax, serta mampu menggeneralisasi dengan baik pada data validasi yang belum pernah dilihat sebelumnya. Namun, optimalisasi lebih lanjut pada hyperparameter atau arsitektur model mungkin dapat meningkatkan performa lebih lanjut.
-| **Opsi deployment** | Proyek ini melakukan deployment menggunakan Railway, sebuah platform cloud untuk deployment aplikasi yang menyediakan kemudahan dalam mengelola infrastruktur aplikasi secara efisien. Railway memungkinkan untuk menjalankan aplikasi, memantau kinerja, dan memastikan ketersediaan model dengan lebih baik melalui integrasi yang mudah dengan alat monitoring seperti Grafana-Prometheus. |
-| **Web app** | Model hoax detection telah di-deploy menggunakan Railway di [hoax-model-production.up.railway.app](https://hoax-model-production.up.railway.app/v1/models/hoax-model/metadata). Endpoint ini dapat diakses untuk melakukan prediksi terhadap teks untuk mendeteksi hoax.|
-| **Monitoring** | Metrik yang Dimonitor <br> 1. **tensorflow:core:saved_model:read** <br> Metrik ini mencatat jumlah pembacaan (reads) yang dilakukan terhadap model SavedModel. Ini membantu dalam memahami seberapa sering model dimuat ulang atau diakses oleh TensorFlow Serving. <br> 2. **tensorflow:core** <br> Metrik ini menghitung jumlah eksekusi grafik yang terjadi saat TensorFlow Serving mengevaluasi atau melakukan prediksi dengan model. Ini mengindikasikan seberapa sering model aktif melakukan komputasi. <br> 3. **tensorflow:cc:saved_model** <br> Metrik ini mengukur waktu yang dibutuhkan untuk memuat model SavedModel ke dalam memori. Latensi yang rendah menunjukkan kinerja yang baik dalam memuat model. <br> 4. **tensorflow:serving** <br>Metrik ini mencatat jumlah total permintaan yang diterima oleh TensorFlow Serving. Ini memberikan gambaran tentang tingkat penggunaan dan beban kerja yang diterima oleh model. <br><br> Integrasi Grafana-Prometheus dengan TensorFlow Serving memungkinkan untuk memantau kinerja model serving secara efektif. Pemantauan metrik-metrik tersebut membantu dalam memahami penggunaan model dan kinerjanya, serta memungkinkan untuk melakukan optimasi yang diperlukan.|
+| --- | --- |
+| **Dataset** | [Indonesia False News (Hoax) Dataset](https://www.kaggle.com/datasets/muhammadghazimuharam/indonesiafalsenews/data): 4.231 narasi berita (`narasi`) berlabel `1` = hoaks (3.465) dan `0` = bukan hoaks (766). |
+| **Masalah** | Hoaks dapat menyebabkan ketidakpercayaan publik, memengaruhi opini dan keputusan, bahkan memicu konflik sosial. Tantangannya: keberagaman gaya penulisan, variasi topik, dan strategi manipulatif pembuat berita palsu. |
+| **Solusi** | Model deep learning CNN yang mengenali pola umum berita palsu (kata emosional, judul sensasional, konten tidak kredibel) dari urutan kata dalam kalimat. |
+| **Pengolahan** | Di komponen Transform: lowercase, hapus tanda kutip, hapus karakter khusus dengan regex, rapikan spasi berlebih, dan pangkas spasi di awal/akhir. |
+| **Arsitektur** | Input string → TextVectorization → Embedding → Conv1D → GlobalMaxPooling1D → Dense + Dropout → Dense + Dropout → Dense sigmoid (0 = bukan hoaks, 1 = hoaks). |
+| **Metrik** | Pelatihan memakai binary crossentropy dan accuracy. Evaluator (TFMA) juga menghitung AUC, precision, recall, dan example count; model di-*bless* jika binary accuracy ≥ 0.5 dan tidak lebih buruk dari baseline. |
+| **Deployment** | TensorFlow Serving di Railway. Endpoint pernah di `hoax-model-production.up.railway.app`, kini sudah tidak aktif; model bisa dijalankan lokal dengan Docker (lihat bawah). |
+| **Monitoring** | Prometheus dan Grafana memantau metrik TF Serving: `tensorflow:core:saved_model:read` (pembacaan SavedModel), `tensorflow:core` (eksekusi graph), `tensorflow:cc:saved_model` (waktu memuat model), dan `tensorflow:serving` (jumlah request). |
+
+## Arsitektur Pipeline
+
+```
+data/Data_latih.csv
+  → CsvExampleGen (train:eval = 8:2)
+  → StatisticsGen → SchemaGen → ExampleValidator
+  → Transform (pembersihan teks)
+  → Tuner (30 trial) → Trainer (EarlyStopping, ReduceLROnPlateau, ModelCheckpoint)
+  → Resolver (latest blessed) + Evaluator (TFMA)
+  → Pusher → outputs/serving_model
+  → TensorFlow Serving (Docker, Railway) → Prometheus → Grafana
+```
+
+Pipeline dijalankan lokal dengan Apache Beam (`BeamDagRunner`).
+
+## Tech Stack
+
+TFX, TensorFlow Transform, TensorFlow Model Analysis, Keras Tuner, TensorFlow/Keras, Apache Beam, TensorFlow Serving, Docker, Railway, Prometheus, Grafana (Python 3.9).
+
+## Struktur Proyek
+
+```
+hoax-detection/
+├── data/Data_latih.csv
+├── modules/                  # components, pipeline, transform, tuner, model, trainer
+├── hkacode-pipeline.ipynb    # Menjalankan pipeline end-to-end
+├── hkacode-testing.ipynb     # Request prediksi ke model yang di-deploy
+├── outputs/                  # Artefak komponen TFX dan serving_model
+├── monitoring/               # Dockerfile Prometheus, prometheus.yml, prometheus.config
+└── Dockerfile                # Image TensorFlow Serving
+```
+
+## Cara Menjalankan
+
+```bash
+git clone https://github.com/harrymardika/hoax-detection.git
+cd hoax-detection
+conda create -n mlops-tfx python=3.9 && conda activate mlops-tfx
+pip install tfx
+jupyter notebook hkacode-pipeline.ipynb      # jalankan pipeline
+```
+
+Serving lokal:
+
+```bash
+docker build -t hoax-model . && docker run -p 8501:8501 hoax-model
+curl http://localhost:8501/v1/models/hoax-model
+```
+
+Model menerima `tf.train.Example` ter-serialisasi dan di-encode base64 (contoh lengkap di `hkacode-testing.ipynb`):
+
+```python
+import base64, requests, tensorflow as tf
+
+def predict(text: bytes):
+    feat = tf.train.Feature(bytes_list=tf.train.BytesList(value=[text]))
+    ex = tf.train.Example(features=tf.train.Features(feature={"narasi": feat}))
+    payload = {"signature_name": "serving_default",
+               "instances": [{"examples": {"b64": base64.b64encode(ex.SerializeToString()).decode()}}]}
+    return requests.post("http://localhost:8501/v1/models/hoax-model:predict", json=payload).json()
+
+print(predict(b"Presiden Jokowi mengadakan kunjungan kerja"))   # skor > 0.5 berarti hoaks
+```
+
+Monitoring: ubah target di `monitoring/prometheus.yml` ke alamat server model, lalu `cd monitoring && docker build -t hoax-monitoring . && docker run -p 9090:9090 hoax-monitoring`, dan hubungkan Grafana ke `http://localhost:9090`.
+
+## Author
+
+**Harry Mardika** · [GitHub](https://github.com/harrymardika)
